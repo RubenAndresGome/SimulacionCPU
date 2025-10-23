@@ -150,7 +150,7 @@
         }
         
         .bus-line.active {
-            animation: pulse 1s infinite;
+            animation: pulse 2s infinite;
         }
         
         .bus-line.data {
@@ -186,7 +186,7 @@
             margin: 0.25rem 0;
             font-family: 'Orbitron', monospace;
             font-size: 0.9rem;
-            transition: all 0.3s ease;
+            transition: all 0.5s ease;
         }
         
         .memory-cell.active {
@@ -254,7 +254,7 @@
             padding: 0.8rem;
             margin: 0.5rem 0;
             border-radius: 10px;
-            transition: all 0.3s ease;
+            transition: all 0.5s ease;
         }
         
         .phase-item.active {
@@ -324,7 +324,7 @@
             border-radius: 50%;
             margin: 0 0.3rem;
             background: #4b5563;
-            transition: all 0.3s ease;
+            transition: all 0.5s ease;
         }
         
         .signal-indicator.active {
@@ -345,7 +345,7 @@
         }
         
         .clock-display.ticking {
-            animation: clockPulse 0.5s ease;
+            animation: clockPulse 1s ease;
         }
         
         @keyframes clockPulse {
@@ -368,7 +368,7 @@
             margin: 0.5rem 0;
             border-radius: 8px;
             background: rgba(15, 23, 42, 0.8);
-            transition: all 0.3s ease;
+            transition: all 0.5s ease;
         }
         
         .handshake-signal.active {
@@ -517,7 +517,7 @@
                 </div>
                 <div class="col-md-4 text-center">
                     <div class="tech-font display-6 text-white">
-                        <i class="fas fa-clock me-2\"></i>
+                        <i class="fas fa-clock me-2"></i>
                         <span id="cycleCounter">0000</span>
                     </div>
                     <small class="text-white-50">Ciclos de Reloj</small>
@@ -558,11 +558,11 @@
                 <div class="col-md-4">
                     <div class="speed-control">
                         <h5><i class="fas fa-tachometer-alt me-2"></i>Velocidad</h5>
-                        <input type="range" id="speedSlider" class="form-range speed-slider" min="1" max="10" value="5">
+                        <input type="range" id="speedSlider" class="form-range speed-slider" min="1" max="10" value="3">
                         <div class="speed-label">
-                            <span>Lento</span>
-                            <span id="speedValue">5x</span>
-                            <span>Rápido</span>
+                            <span>Muy Lento</span>
+                            <span id="speedValue">3x</span>
+                            <span>Normal</span>
                         </div>
                     </div>
                 </div>
@@ -754,7 +754,7 @@
                     </div>
                     <div class="status-item">
                         <span>Velocidad</span>
-                        <span id="currentSpeed" class="badge bg-info">5x</span>
+                        <span id="currentSpeed" class="badge bg-info">3x</span>
                     </div>
                 </div>
             </div>
@@ -773,7 +773,7 @@
                 this.currentPhase = null;
                 this.communicationMode = 'sync';
                 this.clockCycle = 0;
-                this.speed = 5;
+                this.speed = 3; // Reducido de 5 a 3 por defecto
                 this.selectedInstruction = null;
                 
                 // Registros
@@ -896,7 +896,8 @@
             async run() {
                 while (this.isRunning && this.isPowered) {
                     await this.executeStep();
-                    await this.delay(1000 / this.speed);
+                    // Aumentado de 1000 a 3000 para hacerlo más lento
+                    await this.delay(3000 / this.speed);
                 }
             }
             
@@ -905,13 +906,14 @@
                 
                 // Ejecutar ciclo de instrucción
                 await this.fetchPhase();
-                await this.delay(500 / this.speed);
+                // Aumentado de 500 a 1500 para hacerlo más lento
+                await this.delay(1500 / this.speed);
                 
                 await this.decodePhase();
-                await this.delay(500 / this.speed);
+                await this.delay(1500 / this.speed);
                 
                 await this.executePhase();
-                await this.delay(500 / this.speed);
+                await this.delay(1500 / this.speed);
                 
                 this.clockCycle++;
                 document.getElementById('cycleCounter').textContent = this.clockCycle.toString().padStart(4, '0');
@@ -1046,18 +1048,20 @@
                 });
                 document.getElementById(registerId).classList.add('active');
                 
+                // Aumentado de 1000 a 2000 para mantener el efecto visual por más tiempo
                 setTimeout(() => {
                     document.getElementById(registerId).classList.remove('active');
-                }, 1000);
+                }, 2000);
             }
             
             activateBus(busId) {
                 const bus = document.getElementById(busId);
                 bus.classList.add('active');
                 
+                // Aumentado de 1000 a 2000 para mantener el efecto visual por más tiempo
                 setTimeout(() => {
                     bus.classList.remove('active');
-                }, 1000);
+                }, 2000);
             }
             
             activateMemoryCell(address) {
@@ -1066,9 +1070,10 @@
                 });
                 document.getElementById(`memory-${address}`).classList.add('active');
                 
+                // Aumentado de 1000 a 2000 para mantener el efecto visual por más tiempo
                 setTimeout(() => {
                     document.getElementById(`memory-${address}`).classList.remove('active');
-                }, 1000);
+                }, 2000);
             }
             
             async clockTick() {
@@ -1076,7 +1081,8 @@
                 clockDisplay.textContent = '1';
                 clockDisplay.parentElement.classList.add('ticking');
                 
-                await this.delay(200);
+                // Aumentado de 200 a 500 para hacer el tick más lento
+                await this.delay(500 / this.speed);
                 
                 clockDisplay.textContent = '0';
                 clockDisplay.parentElement.classList.remove('ticking');
@@ -1086,11 +1092,12 @@
                 if (type === 'request') {
                     document.getElementById('requestSignal').classList.add('active');
                     document.getElementById('requestIndicator').classList.add('active');
-                    await this.delay(300);
+                    // Aumentado de 300 a 800 para hacer la señal más lenta
+                    await this.delay(800 / this.speed);
                 } else if (type === 'acknowledge') {
                     document.getElementById('ackSignal').classList.add('active');
                     document.getElementById('ackIndicator').classList.add('active');
-                    await this.delay(300);
+                    await this.delay(800 / this.speed);
                 }
                 
                 setTimeout(() => {
@@ -1098,7 +1105,7 @@
                     document.getElementById('requestIndicator').classList.remove('active');
                     document.getElementById('ackSignal').classList.remove('active');
                     document.getElementById('ackIndicator').classList.remove('active');
-                }, 500);
+                }, 1000);
             }
             
             setCommunicationMode(mode) {
