@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Interactivo de CPU - Ciclo de Instrucción</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #1e40af;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --cpu-bg: #0f172a;
+            --register-bg: #1e293b;
+            --bus-color: #3b82f6;
+            --clock-color: #8b5cf6;
+            --data-color: #10b981;
+            --address-color: #f59e0b;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .tech-font {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .main-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 2rem 0;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .main-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs><pattern id=\"grid\" width=\"10\" height=\"10\" patternUnits=\"userSpaceOnUse\"><path d=\"M 10 0 L 0 0 0 10\" fill=\"none\" stroke=\"rgba(255,255,255,0.1)\" stroke-width=\"0.5\"/></pattern></defs><rect width=\"100\" height=\"100\" fill=\"url(%23grid)\"/></svg>');
+            opacity: 0.3;
+        }
+        
+        .cpu-container {
+            background: var(--cpu-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            position: relative;
+        }
+        
+        .cpu-container::before {
+            content: 'CPU';
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.5);
+        }
+        
+        .register-card {
+            background: var(--register-bg);
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .register-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .register-card.active::before {
+            transform: scaleX(1);
+        }
+        
+        .register-card.active {
+            border-color: var(--success);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .register-name {
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+        
+        .register-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.2rem;
+            color: #10b981;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        
+        .bus-line {
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--bus-color), transparent);
+            margin: 1rem 0;
+            position: relative;
+            border-radius: 2px;
+        }
+        
+        .bus-line.active {
+            animation: pulse 1s infinite;
+        }
+        
+        .bus-line.data {
+            background: linear-gradient(90deg, transparent, var(--data-color), transparent);
+        }
+        
+        .bus-line.address {
+            background: linear-gradient(90deg, transparent, var(--address-color), transparent);
+        }
+        
+        .bus-line.clock {
+            background: linear-gradient(90deg, transparent, var(--clock-color), transparent);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        .memory-bank {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .memory-cell {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .memory-cell.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .control-panel {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-cpu {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-cpu:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+        }
+        
+        .btn-cpu:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-cpu.success {
+            background: linear-gradient(135deg, var(--success), #059669);
+        }
+        
+        .btn-cpu.warning {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+        }
+        
+        .btn-cpu.danger {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+        }
+        
+        .phase-indicator {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .phase-item {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .phase-item.active {
+            background: rgba(37, 99, 235, 0.2);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .phase-item.completed {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid var(--success);
+        }
+        
+        .phase-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .phase-icon.fetch { background: linear-gradient(135deg, #3b82f6, #1e40af); }
+        .phase-icon.decode { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+        .phase-icon.execute { background: linear-gradient(135deg, #10b981, #059669); }
+        
+        .communication-mode {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .mode-toggle {
+            display: flex;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 10px;
+            padding: 0.3rem;
+            margin: 1rem 0;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 0.8rem;
+            border: none;
+            background: transparent;
+            color: #9ca3af;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+        
+        .signal-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin: 0 0.3rem;
+            background: #4b5563;
+            transition: all 0.3s ease;
+        }
+        
+        .signal-indicator.active {
+            background: var(--success);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+        
+        .clock-display {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            color: var(--clock-color);
+            margin: 1rem 0;
+            border: 2px solid rgba(139, 92, 246, 0.3);
+        }
+        
+        .clock-display.ticking {
+            animation: clockPulse 0.5s ease;
+        }
+        
+        @keyframes clockPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .handshake-panel {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .handshake-signal {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            transition: all 0.3s ease;
+        }
+        
+        .handshake-signal.active {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--success);
+        }
+        
+        .alu-display {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            text-align: center;
+        }
+        
+        .alu-operation {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin: 1rem 0;
+        }
+        
+        .alu-result {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            color: var(--success);
+            font-weight: bold;
+        }
+        
+        .status-panel {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .instruction-set {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .instruction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .instruction-item:hover {
+            background: rgba(37, 99, 235, 0.2);
+            transform: translateX(5px);
+        }
+        
+        .instruction-item.selected {
+            background: rgba(37, 99, 235, 0.3);
+            border: 1px solid var(--primary);
+        }
+        
+        .instruction-code {
+            font-family: 'Orbitron', monospace;
+            color: var(--primary);
+            font-weight: bold;
+        }
+        
+        .instruction-desc {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+        
+        .speed-control {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .speed-slider {
+            width: 100%;
+            margin: 1rem 0;
+        }
+        
+        .speed-label {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+        
+        @media (max-width: 768px) {
+            .cpu-container {
+                padding: 1rem;
+                margin: 1rem 0;
+            }
+            
+            .register-value {
+                font-size: 1rem;
+            }
+            
+            .btn-cpu {
+                padding: 0.6rem 1.5rem;
+                font-size: 0.9rem;
+            }
+            
+            .phase-icon {
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-4 fw-bold tech-font mb-3">
+                        <i class="fas fa-microchip me-3"></i>SIMULADOR CPU
+                    </h1>
+                    <p class="lead mb-0">Ciclo de Instrucción Interactivo - Comunicación Síncrona vs Asíncrona</p>
+                    <p class="mb-0 opacity-75">Aprende visualmente cómo funciona una CPU</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="tech-font display-6 text-white">
+                        <i class="fas fa-clock me-2\"></i>
+                        <span id="cycleCounter">0000</span>
+                    </div>
+                    <small class="text-white-50">Ciclos de Reloj</small>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Panel de Control Principal -->
+        <div class="control-panel">
+            <div class="row">
+                <div class="col-md-8">
+                    <h3 class="mb-4"><i class="fas fa-gamepad me-2"></i>Panel de Control</h3>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <button id="btnPower" class="btn-cpu w-100">
+                                <i class="fas fa-power-off me-2"></i>ENCENDER
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button id="btnStep" class="btn-cpu w-100 success" disabled>
+                                <i class="fas fa-step-forward me-2"></i>PASO
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button id="btnRun" class="btn-cpu w-100 warning" disabled>
+                                <i class="fas fa-play me-2"></i>EJECUTAR
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button id="btnReset" class="btn-cpu w-100 danger">
+                                <i class="fas fa-redo me-2"></i>REINICIAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="speed-control">
+                        <h5><i class="fas fa-tachometer-alt me-2"></i>Velocidad</h5>
+                        <input type="range" id="speedSlider" class="form-range speed-slider" min="1" max="10" value="5">
+                        <div class="speed-label">
+                            <span>Lento</span>
+                            <span id="speedValue">5x</span>
+                            <span>Rápido</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modo de Comunicación -->
+        <div class="communication-mode">
+            <h3 class="mb-3"><i class="fas fa-exchange-alt me-2"></i>Modo de Comunicación</h3>
+            <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="sync">
+                    <i class="fas fa-clock me-2"></i>SÍNCRONO
+                </button>
+                <button class="mode-btn" data-mode="async">
+                    <i class="fas fa-wifi me-2"></i>ASÍNCRONO
+                </button>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div id="syncPanel" class="clock-display">
+                        <i class="fas fa-clock me-2"></i>
+                        <span id="clockSignal">0</span>
+                        <div class="small mt-2">Señal de Reloj</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div id="asyncPanel" class="handshake-panel" style="display: none;">
+                        <div class="handshake-signal" id="requestSignal">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            <span>REQUEST</span>
+                            <span class="signal-indicator ms-auto" id="requestIndicator"></span>
+                        </div>
+                        <div class="handshake-signal" id="ackSignal">
+                            <i class="fas fa-check me-2"></i>
+                            <span>ACKNOWLEDGE</span>
+                            <span class="signal-indicator ms-auto" id="ackIndicator"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicador de Fases -->
+        <div class="phase-indicator">
+            <h3 class="mb-3"><i class="fas fa-tasks me-2"></i>Ciclo de Instrucción</h3>
+            <div class="phase-item" id="fetchPhase">
+                <div class="phase-icon fetch">
+                    <i class="fas fa-download"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold">FETCH</div>
+                    <small class="text-muted">Obtener instrucción desde memoria</small>
+                </div>
+                <div class="tech-font text-success" id="fetchStatus">ESPERA</div>
+            </div>
+            <div class="phase-item" id="decodePhase">
+                <div class="phase-icon decode">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold">DECODE</div>
+                    <small class="text-muted">Decodificar instrucción</small>
+                </div>
+                <div class="tech-font text-success" id="decodeStatus">ESPERA</div>
+            </div>
+            <div class="phase-item" id="executePhase">
+                <div class="phase-icon execute">
+                    <i class="fas fa-play"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold">EXECUTE</div>
+                    <small class="text-muted">Ejecutar operación</small>
+                </div>
+                <div class="tech-font text-success" id="executeStatus">ESPERA</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- CPU Principal -->
+            <div class="col-lg-8">
+                <div class="cpu-container">
+                    <h3 class="mb-4"><i class="fas fa-microchip me-2"></i>Unidad Central de Procesamiento</h3>
+                    
+                    <!-- Registros Principales -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="register-card" id="pcRegister">
+                                <div class="register-name">PC (Program Counter)</div>
+                                <div class="register-value tech-font" id="pcValue">0000</div>
+                                <small class="text-muted">Siguiente dirección de instrucción</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="register-card" id="irRegister">
+                                <div class="register-name">IR (Instruction Register)</div>
+                                <div class="register-value tech-font" id="irValue">0000</div>
+                                <small class="text-muted">Instrucción actual</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Buses -->
+                    <div class="bus-line address" id="addressBus"></div>
+                    <div class="text-center small text-muted mb-2">Bus de Direcciones</div>
+                    
+                    <div class="bus-line data" id="dataBus"></div>
+                    <div class="text-center small text-muted mb-2">Bus de Datos</div>
+                    
+                    <div class="bus-line clock" id="controlBus"></div>
+                    <div class="text-center small text-muted mb-4">Bus de Control</div>
+                    
+                    <!-- Registros de Memoria -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="register-card" id="marRegister">
+                                <div class="register-name">MAR (Memory Address Register)</div>
+                                <div class="register-value tech-font" id="marValue">0000</div>
+                                <small class="text-muted">Dirección de memoria</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="register-card" id="mdrRegister">
+                                <div class="register-name">MDR (Memory Data Register)</div>
+                                <div class="register-value tech-font" id="mdrValue">0000</div>
+                                <small class="text-muted">Dato de memoria</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ALU -->
+                    <div class="alu-display mt-4">
+                        <h4><i class="fas fa-calculator me-2"></i>ALU (Unidad Aritmético-Lógica)</h4>
+                        <div class="alu-operation" id="aluOperation">ESPERA</div>
+                        <div class="alu-result tech-font" id="aluResult">0000</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panel Lateral -->
+            <div class="col-lg-4">
+                <!-- Banco de Memoria -->
+                <div class="memory-bank">
+                    <h4><i class="fas fa-memory me-2"></i>Banco de Memoria</h4>
+                    <div id="memoryCells">
+                        <!-- Las celdas de memoria se generarán dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Conjunto de Instrucciones -->
+                <div class="instruction-set mt-4">
+                    <h4><i class="fas fa-list me-2"></i>Conjunto de Instrucciones</h4>
+                    <div class="instruction-item" data-instruction="LOAD">
+                        <span class="instruction-code">LOAD</span>
+                        <span class="instruction-desc">Cargar desde memoria</span>
+                    </div>
+                    <div class="instruction-item" data-instruction="ADD">
+                        <span class="instruction-code">ADD</span>
+                        <span class="instruction-desc">Sumar</span>
+                    </div>
+                    <div class="instruction-item" data-instruction="STORE">
+                        <span class="instruction-code">STORE</span>
+                        <span class="instruction-desc">Guardar en memoria</span>
+                    </div>
+                    <div class="instruction-item" data-instruction="SUB">
+                        <span class="instruction-code">SUB</span>
+                        <span class="instruction-desc">Restar</span>
+                    </div>
+                    <div class="instruction-item" data-instruction="HALT">
+                        <span class="instruction-code">HALT</span>
+                        <span class="instruction-desc">Detener ejecución</span>
+                    </div>
+                </div>
+                
+                <!-- Panel de Estado -->
+                <div class="status-panel mt-4">
+                    <h4><i class="fas fa-info-circle me-2"></i>Estado del Sistema</h4>
+                    <div class="status-item">
+                        <span>Estado CPU</span>
+                        <span id="cpuStatus" class="badge bg-secondary">APAGADO</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Fase Actual</span>
+                        <span id="currentPhase" class="badge bg-secondary">NINGUNA</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Modo</span>
+                        <span id="currentMode" class="badge bg-primary">SÍNCRONO</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Velocidad</span>
+                        <span id="currentSpeed" class="badge bg-info">5x</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Simulador de CPU
+        class CPUSimulator {
+            constructor() {
+                this.isPowered = false;
+                this.isRunning = false;
+                this.currentPhase = null;
+                this.communicationMode = 'sync';
+                this.clockCycle = 0;
+                this.speed = 5;
+                this.selectedInstruction = null;
+                
+                // Registros
+                this.registers = {
+                    PC: 0x0000,
+                    IR: 0x0000,
+                    MAR: 0x0000,
+                    MDR: 0x0000,
+                    AC: 0x0000
+                };
+                
+                // Memoria
+                this.memory = [
+                    0x1001, // LOAD 01
+                    0x2002, // ADD 02
+                    0x3003, // STORE 03
+                    0x4004, // SUB 04
+                    0xFFFF  // HALT
+                ];
+                
+                this.initializeEventListeners();
+                this.initializeMemory();
+                this.updateDisplay();
+            }
+            
+            initializeEventListeners() {
+                // Botones de control
+                document.getElementById('btnPower').addEventListener('click', () => this.togglePower());
+                document.getElementById('btnStep').addEventListener('click', () => this.executeStep());
+                document.getElementById('btnRun').addEventListener('click', () => this.toggleRun());
+                document.getElementById('btnReset').addEventListener('click', () => this.reset());
+                
+                // Control de velocidad
+                document.getElementById('speedSlider').addEventListener('input', (e) => {
+                    this.speed = parseInt(e.target.value);
+                    document.getElementById('speedValue').textContent = `${this.speed}x`;
+                    document.getElementById('currentSpeed').textContent = `${this.speed}x`;
+                });
+                
+                // Modo de comunicación
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.setCommunicationMode(e.target.dataset.mode);
+                    });
+                });
+                
+                // Selección de instrucciones
+                document.querySelectorAll('.instruction-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        this.selectInstruction(e.currentTarget.dataset.instruction);
+                    });
+                });
+            }
+            
+            initializeMemory() {
+                const memoryCells = document.getElementById('memoryCells');
+                memoryCells.innerHTML = '';
+                
+                this.memory.forEach((value, index) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'memory-cell';
+                    cell.id = `memory-${index}`;
+                    cell.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span class="tech-font">${index.toString(16).toUpperCase().padStart(2, '0')}:</span>
+                            <span class="tech-font">${value.toString(16).toUpperCase().padStart(4, '0')}</span>
+                        </div>
+                    `;
+                    memoryCells.appendChild(cell);
+                });
+            }
+            
+            togglePower() {
+                this.isPowered = !this.isPowered;
+                const btn = document.getElementById('btnPower');
+                
+                if (this.isPowered) {
+                    btn.innerHTML = '<i class="fas fa-power-off me-2"></i>APAGAR';
+                    btn.classList.add('danger');
+                    document.getElementById('btnStep').disabled = false;
+                    document.getElementById('btnRun').disabled = false;
+                    document.getElementById('cpuStatus').textContent = 'ENCENDIDO';
+                    document.getElementById('cpuStatus').className = 'badge bg-success';
+                    this.showNotification('CPU encendida', 'success');
+                } else {
+                    btn.innerHTML = '<i class="fas fa-power-off me-2"></i>ENCENDER';
+                    btn.classList.remove('danger');
+                    document.getElementById('btnStep').disabled = true;
+                    document.getElementById('btnRun').disabled = true;
+                    document.getElementById('cpuStatus').textContent = 'APAGADO';
+                    document.getElementById('cpuStatus').className = 'badge bg-secondary';
+                    this.isRunning = false;
+                    this.updateRunButton();
+                    this.showNotification('CPU apagada', 'warning');
+                }
+            }
+            
+            toggleRun() {
+                this.isRunning = !this.isRunning;
+                this.updateRunButton();
+                
+                if (this.isRunning) {
+                    this.run();
+                }
+            }
+            
+            updateRunButton() {
+                const btn = document.getElementById('btnRun');
+                if (this.isRunning) {
+                    btn.innerHTML = '<i class="fas fa-pause me-2"></i>PAUSAR';
+                    btn.classList.remove('warning');
+                    btn.classList.add('danger');
+                } else {
+                    btn.innerHTML = '<i class="fas fa-play me-2"></i>EJECUTAR';
+                    btn.classList.remove('danger');
+                    btn.classList.add('warning');
+                }
+            }
+            
+            async run() {
+                while (this.isRunning && this.isPowered) {
+                    await this.executeStep();
+                    await this.delay(1000 / this.speed);
+                }
+            }
+            
+            async executeStep() {
+                if (!this.isPowered) return;
+                
+                // Ejecutar ciclo de instrucción
+                await this.fetchPhase();
+                await this.delay(500 / this.speed);
+                
+                await this.decodePhase();
+                await this.delay(500 / this.speed);
+                
+                await this.executePhase();
+                await this.delay(500 / this.speed);
+                
+                this.clockCycle++;
+                document.getElementById('cycleCounter').textContent = this.clockCycle.toString().padStart(4, '0');
+            }
+            
+            async fetchPhase() {
+                this.setPhase('fetch');
+                this.showNotification('Fase FETCH: Obteniendo instrucción', 'info');
+                
+                // Activar registros y buses
+                this.activateRegister('pcRegister');
+                this.activateRegister('marRegister');
+                this.activateBus('addressBus');
+                
+                if (this.communicationMode === 'sync') {
+                    await this.clockTick();
+                } else {
+                    await this.handshake('request');
+                }
+                
+                // Transferir PC a MAR
+                this.registers.MAR = this.registers.PC;
+                this.updateDisplay();
+                
+                // Obtener instrucción desde memoria
+                this.activateRegister('mdrRegister');
+                this.activateBus('dataBus');
+                this.activateMemoryCell(this.registers.PC);
+                
+                if (this.communicationMode === 'sync') {
+                    await this.clockTick();
+                } else {
+                    await this.handshake('acknowledge');
+                }
+                
+                // Transferir a IR
+                this.registers.IR = this.memory[this.registers.PC];
+                this.registers.MDR = this.registers.IR;
+                this.activateRegister('irRegister');
+                this.updateDisplay();
+                
+                this.completePhase('fetch');
+            }
+            
+            async decodePhase() {
+                this.setPhase('decode');
+                this.showNotification('Fase DECODE: Decodificando instrucción', 'info');
+                
+                this.activateRegister('irRegister');
+                
+                if (this.communicationMode === 'sync') {
+                    await this.clockTick();
+                } else {
+                    await this.handshake('request');
+                }
+                
+                // Decodificar instrucción
+                const instruction = this.registers.IR >> 8;
+                const operand = this.registers.IR & 0xFF;
+                
+                document.getElementById('aluOperation').textContent = `${this.getInstructionName(instruction)} ${operand.toString(16).toUpperCase()}`;
+                
+                this.completePhase('decode');
+            }
+            
+            async executePhase() {
+                this.setPhase('execute');
+                this.showNotification('Fase EXECUTE: Ejecutando operación', 'info');
+                
+                const instruction = this.registers.IR >> 8;
+                const operand = this.registers.IR & 0xFF;
+                
+                switch (instruction) {
+                    case 0x10: // LOAD
+                        this.registers.AC = this.memory[operand];
+                        document.getElementById('aluResult').textContent = `AC = ${this.registers.AC.toString(16).toUpperCase().padStart(4, '0')}`;
+                        break;
+                    case 0x20: // ADD
+                        this.registers.AC += this.memory[operand];
+                        document.getElementById('aluResult').textContent = `AC = ${this.registers.AC.toString(16).toUpperCase().padStart(4, '0')}`;
+                        break;
+                    case 0x30: // STORE
+                        this.memory[operand] = this.registers.AC;
+                        this.activateMemoryCell(operand);
+                        this.updateMemoryDisplay();
+                        break;
+                    case 0x40: // SUB
+                        this.registers.AC -= this.memory[operand];
+                        document.getElementById('aluResult').textContent = `AC = ${this.registers.AC.toString(16).toUpperCase().padStart(4, '0')}`;
+                        break;
+                    case 0xFF: // HALT
+                        this.isRunning = false;
+                        this.updateRunButton();
+                        this.showNotification('Ejecución detenida', 'warning');
+                        break;
+                }
+                
+                if (this.communicationMode === 'sync') {
+                    await this.clockTick();
+                } else {
+                    await this.handshake('acknowledge');
+                }
+                
+                // Incrementar PC
+                this.registers.PC++;
+                this.updateDisplay();
+                
+                this.completePhase('execute');
+            }
+            
+            setPhase(phase) {
+                // Resetear todas las fases
+                document.querySelectorAll('.phase-item').forEach(item => {
+                    item.classList.remove('active', 'completed');
+                });
+                
+                // Activar fase actual
+                document.getElementById(`${phase}Phase`).classList.add('active');
+                this.currentPhase = phase;
+                document.getElementById('currentPhase').textContent = phase.toUpperCase();
+            }
+            
+            completePhase(phase) {
+                document.getElementById(`${phase}Phase`).classList.remove('active');
+                document.getElementById(`${phase}Phase`).classList.add('completed');
+                document.getElementById(`${phase}Status`).textContent = 'COMPLETADO';
+            }
+            
+            activateRegister(registerId) {
+                document.querySelectorAll('.register-card').forEach(card => {
+                    card.classList.remove('active');
+                });
+                document.getElementById(registerId).classList.add('active');
+                
+                setTimeout(() => {
+                    document.getElementById(registerId).classList.remove('active');
+                }, 1000);
+            }
+            
+            activateBus(busId) {
+                const bus = document.getElementById(busId);
+                bus.classList.add('active');
+                
+                setTimeout(() => {
+                    bus.classList.remove('active');
+                }, 1000);
+            }
+            
+            activateMemoryCell(address) {
+                document.querySelectorAll('.memory-cell').forEach(cell => {
+                    cell.classList.remove('active');
+                });
+                document.getElementById(`memory-${address}`).classList.add('active');
+                
+                setTimeout(() => {
+                    document.getElementById(`memory-${address}`).classList.remove('active');
+                }, 1000);
+            }
+            
+            async clockTick() {
+                const clockDisplay = document.getElementById('clockSignal');
+                clockDisplay.textContent = '1';
+                clockDisplay.parentElement.classList.add('ticking');
+                
+                await this.delay(200);
+                
+                clockDisplay.textContent = '0';
+                clockDisplay.parentElement.classList.remove('ticking');
+            }
+            
+            async handshake(type) {
+                if (type === 'request') {
+                    document.getElementById('requestSignal').classList.add('active');
+                    document.getElementById('requestIndicator').classList.add('active');
+                    await this.delay(300);
+                } else if (type === 'acknowledge') {
+                    document.getElementById('ackSignal').classList.add('active');
+                    document.getElementById('ackIndicator').classList.add('active');
+                    await this.delay(300);
+                }
+                
+                setTimeout(() => {
+                    document.getElementById('requestSignal').classList.remove('active');
+                    document.getElementById('requestIndicator').classList.remove('active');
+                    document.getElementById('ackSignal').classList.remove('active');
+                    document.getElementById('ackIndicator').classList.remove('active');
+                }, 500);
+            }
+            
+            setCommunicationMode(mode) {
+                this.communicationMode = mode;
+                
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+                
+                if (mode === 'sync') {
+                    document.getElementById('syncPanel').style.display = 'block';
+                    document.getElementById('asyncPanel').style.display = 'none';
+                    document.getElementById('currentMode').textContent = 'SÍNCRONO';
+                    document.getElementById('currentMode').className = 'badge bg-primary';
+                } else {
+                    document.getElementById('syncPanel').style.display = 'none';
+                    document.getElementById('asyncPanel').style.display = 'block';
+                    document.getElementById('currentMode').textContent = 'ASÍNCRONO';
+                    document.getElementById('currentMode').className = 'badge bg-success';
+                }
+                
+                this.showNotification(`Modo cambiado a ${mode === 'sync' ? 'SÍNCRONO' : 'ASÍNCRONO'}`, 'info');
+            }
+            
+            selectInstruction(instruction) {
+                this.selectedInstruction = instruction;
+                
+                document.querySelectorAll('.instruction-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                document.querySelector(`[data-instruction="${instruction}"]`).classList.add('selected');
+                
+                this.showNotification(`Instrucción seleccionada: ${instruction}`, 'info');
+            }
+            
+            reset() {
+                this.isPowered = false;
+                this.isRunning = false;
+                this.currentPhase = null;
+                this.clockCycle = 0;
+                
+                this.registers = {
+                    PC: 0x0000,
+                    IR: 0x0000,
+                    MAR: 0x0000,
+                    MDR: 0x0000,
+                    AC: 0x0000
+                };
+                
+                // Resetear memoria
+                this.memory = [
+                    0x1001, // LOAD 01
+                    0x2002, // ADD 02
+                    0x3003, // STORE 03
+                    0x4004, // SUB 04
+                    0xFFFF  // HALT
+                ];
+                
+                // Resetear UI
+                document.getElementById('btnPower').innerHTML = '<i class="fas fa-power-off me-2"></i>ENCENDER';
+                document.getElementById('btnPower').classList.remove('danger');
+                document.getElementById('btnStep').disabled = true;
+                document.getElementById('btnRun').disabled = true;
+                document.getElementById('btnRun').innerHTML = '<i class="fas fa-play me-2"></i>EJECUTAR';
+                document.getElementById('btnRun').classList.remove('danger');
+                document.getElementById('btnRun').classList.add('warning');
+                
+                document.getElementById('cpuStatus').textContent = 'APAGADO';
+                document.getElementById('cpuStatus').className = 'badge bg-secondary';
+                document.getElementById('currentPhase').textContent = 'NINGUNA';
+                document.getElementById('cycleCounter').textContent = '0000';
+                document.getElementById('aluOperation').textContent = 'ESPERA';
+                document.getElementById('aluResult').textContent = '0000';
+                
+                // Resetear fases
+                document.querySelectorAll('.phase-item').forEach(item => {
+                    item.classList.remove('active', 'completed');
+                });
+                document.querySelectorAll('[id$="Status"]').forEach(status => {
+                    status.textContent = 'ESPERA';
+                });
+                
+                this.updateDisplay();
+                this.updateMemoryDisplay();
+                this.showNotification('Sistema reiniciado', 'success');
+            }
+            
+            updateDisplay() {
+                document.getElementById('pcValue').textContent = this.registers.PC.toString(16).toUpperCase().padStart(4, '0');
+                document.getElementById('irValue').textContent = this.registers.IR.toString(16).toUpperCase().padStart(4, '0');
+                document.getElementById('marValue').textContent = this.registers.MAR.toString(16).toUpperCase().padStart(4, '0');
+                document.getElementById('mdrValue').textContent = this.registers.MDR.toString(16).toUpperCase().padStart(4, '0');
+            }
+            
+            updateMemoryDisplay() {
+                this.memory.forEach((value, index) => {
+                    const cell = document.getElementById(`memory-${index}`);
+                    if (cell) {
+                        cell.querySelector('.tech-font:last-child').textContent = value.toString(16).toUpperCase().padStart(4, '0');
+                    }
+                });
+            }
+            
+            getInstructionName(opcode) {
+                const instructions = {
+                    0x10: 'LOAD',
+                    0x20: 'ADD',
+                    0x30: 'STORE',
+                    0x40: 'SUB',
+                    0xFF: 'HALT'
+                };
+                return instructions[opcode] || 'UNKNOWN';
+            }
+            
+            showNotification(message, type) {
+                // Crear notificación simple
+                const notification = document.createElement('div');
+                notification.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+                notification.style.zIndex = '9999';
+                notification.innerHTML = `
+                    <i class="fas fa-info-circle me-2"></i>${message}
+                `;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+        
+        // Inicializar simulador
+        const simulator = new CPUSimulator();
+    </script>
+</body>
+</html>
